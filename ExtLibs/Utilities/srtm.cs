@@ -415,21 +415,7 @@ namespace MissionPlanner.Utilities
 
         private static void StartQueueProcess()
         {
-            try
-            {
-                requestThread = new Thread(requestRunner);
-                requestThread.IsBackground = true;
-                requestThread.Name = "SRTM request runner";
-                requestThread.Start();
-            }
-            catch (NotSupportedException)
-            {
-                requestRunner();
-            }
-            catch (TypeInitializationException)
-            {
-                requestRunner();
-            }
+            requestRunner();
         }
 
         static double GetAlt(string filename, int x, int y)
@@ -544,7 +530,7 @@ namespace MissionPlanner.Utilities
 
         static SemaphoreSlim requestSemaphore = new SemaphoreSlim(1);
 
-        static async void requestRunner()
+        static async Task requestRunner()
         {
             log.Info("requestRunner start");
 
@@ -554,7 +540,7 @@ namespace MissionPlanner.Utilities
             {
                 try
                 {
-                    await requestSemaphore.WaitAsync(30000);
+                    await requestSemaphore.WaitAsync(30000).ConfigureAwait(false);
 
                     string item = "";
                     lock (objlock)
@@ -568,7 +554,7 @@ namespace MissionPlanner.Utilities
                     if (item != "")
                     {
                         log.Info(item);
-                        await get3secfile(item);
+                        await get3secfile(item).ConfigureAwait(false);
                         lock (objlock)
                         {
                             queue.Remove(item);
@@ -587,7 +573,14 @@ namespace MissionPlanner.Utilities
                 }
 
                 // never more than 1/s
-                await Task.Delay(1000);
+                try
+                {
+                    await Task.Delay(1000).ConfigureAwait(false);
+                }
+                catch
+                {
+
+                }
             }
         }
 
@@ -605,17 +598,17 @@ namespace MissionPlanner.Utilities
             List<string> list = new List<string>();
 
             // load 1 arc seconds first
-            list.AddRange(await getListing(baseurl1sec));
+            list.AddRange(await getListing(baseurl1sec).ConfigureAwait(false));
             log.Info("srtm1sec " + list.Count);
             // load 3 arc second
-            list.AddRange(await getListing(baseurl));
+            list.AddRange(await getListing(baseurl).ConfigureAwait(false));
             log.Info("srtm1esc+3sec " + list.Count);
 
             foreach (string item in list)
             {
                 List<string> hgtfiles = new List<string>();
 
-                hgtfiles = await getListing(item);
+                hgtfiles = await getListing(item).ConfigureAwait(false);
 
                 foreach (string hgt in hgtfiles)
                 {
@@ -624,7 +617,7 @@ namespace MissionPlanner.Utilities
                     {
                         // get file
 
-                        await gethgt(hgt, (string) name);
+                        await gethgt(hgt, (string) name).ConfigureAwait(false);
                         return;
                     }
                 }
@@ -651,19 +644,19 @@ namespace MissionPlanner.Utilities
             {
                 log.Info("Get " + url);
 
-                using (var res = await client.GetAsync(url))
-                using (Stream resstream = await res.Content.ReadAsStreamAsync())
+                using (var res = await client.GetAsync(url).ConfigureAwait(false))
+                using (Stream resstream = await res.Content.ReadAsStreamAsync().ConfigureAwait(false))
                 using (
                     BinaryWriter bw =
                         new BinaryWriter(File.Create(datadirectory + Path.DirectorySeparatorChar + filename + ".zip")))
                 {
-                    byte[] buf1 = new byte[1024];
+                    byte[] buf1 = new byte[1024*4];
 
                     int size = 0;
 
                     while (resstream.CanRead)
                     {
-                        int len = await resstream.ReadAsync(buf1, 0, 1024);
+                        int len = await resstream.ReadAsync(buf1, 0, buf1.Length).ConfigureAwait(false);
                         if (len == 0)
                             break;
                         bw.Write(buf1, 0, len);
@@ -722,11 +715,11 @@ namespace MissionPlanner.Utilities
             {
                 log.Info("srtm req " + url);
 
-                using (var res = await client.GetAsync(url))
-                using (StreamReader resstream = new StreamReader(await res.Content.ReadAsStreamAsync()))
+                using (var res = await client.GetAsync(url).ConfigureAwait(false))
+                using (StreamReader resstream = new StreamReader(await res.Content.ReadAsStreamAsync().ConfigureAwait(false)))
                 {
 
-                    string data = await resstream.ReadToEndAsync();
+                    string data = await resstream.ReadToEndAsync().ConfigureAwait(false);
 
                     Regex regex = new Regex("href=\"([^\"]+)\"", RegexOptions.IgnoreCase);
                     if (regex.IsMatch(data))

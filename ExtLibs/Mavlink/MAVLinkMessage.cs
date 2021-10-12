@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Diagnostics;
 
 public partial class MAVLink
 {
@@ -73,15 +74,20 @@ public partial class MAVLink
                         // fill in the data of the object
                         if (ismavlink2)
                         {
-                            MavlinkUtil.ByteArrayToStructure(buffer, ref _data, MAVLINK_NUM_HEADER_BYTES, payloadlength);
+                            _data = MavlinkUtil.ByteArrayToStructureGC(buffer, typeinfo.type, MAVLINK_NUM_HEADER_BYTES,
+                                payloadlength);
+                            //MavlinkUtil.ByteArrayToStructure(buffer, ref _data, MAVLINK_NUM_HEADER_BYTES, payloadlength);
                         }
                         else
                         {
-                            MavlinkUtil.ByteArrayToStructure(buffer, ref _data, 6, payloadlength);
+                            _data = MavlinkUtil.ByteArrayToStructureGC(buffer, typeinfo.type, 6, payloadlength);
                         }
                     }
                     catch (Exception ex)
                     {
+                        // should not happen
+                        if(Debugger.IsAttached)
+                            Debugger.Break();
                         System.Diagnostics.Debug.WriteLine(ex);
                     }
                 }
@@ -149,8 +155,6 @@ public partial class MAVLink
         {
             this.buffer = buffer;
             this.rxtime = rxTime;
-
-            processBuffer(buffer);
         }
 
         internal void processBuffer(byte[] buffer)

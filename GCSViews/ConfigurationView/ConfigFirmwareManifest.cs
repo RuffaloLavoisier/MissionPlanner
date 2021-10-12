@@ -93,8 +93,12 @@ namespace MissionPlanner.GCSViews.ConfigurationView
 
             this.BeginInvoke((MethodInvoker)delegate
            {
-               imageLabel.Text = first.VehicleType?.ToString() + " " + first.MavFirmwareVersion.ToString() + " " +
-                                 first.MavFirmwareVersionType.ToString();
+               if (String.IsNullOrEmpty(first.MavFirmwareVersionStr))
+                   imageLabel.Text = first.VehicleType?.ToString() + " " + first.MavFirmwareVersion.ToString() + " " +
+                                     first.MavFirmwareVersionType.ToString();
+               else
+                   imageLabel.Text = first.VehicleType?.ToString() + " " + first.MavFirmwareVersionStr + " " +
+                                     first.MavFirmwareVersionType.ToString();
 
                this.Enabled = true;
            });

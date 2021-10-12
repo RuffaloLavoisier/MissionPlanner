@@ -96,16 +96,16 @@ namespace MissionPlanner.Log
             return ret;
         }
 
-        public class atan2 : FunctionExtension
+        public class atan2_func : FunctionExtension
         {
             private double x;
             private double y;
-            public atan2()
+            public atan2_func()
             {
                 x = Double.NaN;
                 y = Double.NaN;
             }
-            public atan2(double x, double y)
+            public atan2_func(double x, double y)
             {
                 this.x = x;
                 this.y = y;
@@ -117,7 +117,7 @@ namespace MissionPlanner.Log
 
             public FunctionExtension clone()
             {
-                return new atan2(x, y);
+                return new atan2_func(x, y);
             }
 
             public string getParameterName(int argumentIndex)
@@ -163,7 +163,7 @@ namespace MissionPlanner.Log
 
             Function f = new Function("wrap_360(x) = (x+360) # 360");
             Function f1 = new Function("degrees(x) = x*57.295779513");
-            Function f2 = new Function("atan2", new atan2());
+            Function f2 = new Function("atan2", new atan2_func());
             Function f3 = new Function("lowpass", new lowpass());
             Function f4 = new Function("delta", new deltaF());
 
@@ -474,7 +474,7 @@ namespace MissionPlanner.Log
 
                 foreach (var item in logdata.GetEnumeratorType(msglist.ToArray()))
                 {
-                    if (item.msgtype.StartsWith("MAG"))
+                    if (item.msgtype.StartsWith("MAG") && (item.instance == "" || item.instance == "0"))
                     {
                         MAG.MagX = double.Parse(item.items[dflog.FindMessageOffset(item.msgtype, "MagX")]);
                         MAG.MagY = double.Parse(item.items[dflog.FindMessageOffset(item.msgtype, "MagY")]);
@@ -483,7 +483,7 @@ namespace MissionPlanner.Log
                         MAG.OfsY = double.Parse(item.items[dflog.FindMessageOffset(item.msgtype, "OfsY")]);
                         MAG.OfsZ = double.Parse(item.items[dflog.FindMessageOffset(item.msgtype, "OfsZ")]);
                     }
-                    else if (item.msgtype == "ATT")
+                    else if (item.msgtype == "ATT" && (item.instance == "" || item.instance == "0"))
                     {
                         ATT.Roll = double.Parse(item.items[dflog.FindMessageOffset("ATT", "Roll")]);
                         ATT.Pitch = double.Parse(item.items[dflog.FindMessageOffset("ATT", "Pitch")]);

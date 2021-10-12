@@ -206,9 +206,10 @@ namespace MissionPlanner.Controls
                     this.progressBar1.Value = 100;
                     this.btnCancel.Visible = false;
                     this.btnClose.Visible = false;
+                    this.ControlBox = true;
                 });
 
-            Thread.Sleep(100);
+            Thread.Sleep(100);         
 
             this.BeginInvoke((MethodInvoker)this.Close);
         }
@@ -350,6 +351,10 @@ namespace MissionPlanner.Controls
             this.Focus();
         }
 
+        void IProgressReporterDialogue.BeginInvoke(Delegate method)
+        {
+            this.BeginInvoke(method);
+        }
     }
 
 }

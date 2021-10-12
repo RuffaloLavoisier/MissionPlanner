@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
-using Flurl.Util;
 using MissionPlanner.Utilities;
 
 namespace MissionPlanner.ArduPilot
@@ -240,9 +239,14 @@ union px4_custom_mode {
                 PropertyInfo[] props =
                     test.GetProperties(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public);
 
+                var posible = input.Split(new string[] { "{", "}" }, StringSplitOptions.RemoveEmptyEntries);
+
                 //props
                 foreach (var field in props)
                 {
+
+                    if (!posible.Contains(field.Name))
+                        continue;
                     // field.Name has the field's name.
                     object fieldValue;
                     TypeCode typeCode;
@@ -282,9 +286,6 @@ union px4_custom_mode {
             }
 
             return input;
-        }
-
-       
-
-   }
+        } 
+    } 
 }

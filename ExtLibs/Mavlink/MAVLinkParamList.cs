@@ -42,7 +42,7 @@ public partial class MAVLink
                         if (item.Name == name)
                         {
                             this[index] = value;
-                            OnPropertyChanged(name);
+                            OnPropertyChanged();
                             return;
                         }
 
@@ -90,7 +90,10 @@ public partial class MAVLink
 
         public new void Add(MAVLinkParam item)
         {
-            this[item.Name] = item;
+            lock (locker)
+            {
+                this[item.Name] = item;
+            }
         }
 
         public new void AddRange(IEnumerable<MAVLinkParam> collection)
@@ -98,15 +101,19 @@ public partial class MAVLink
             lock (locker)
             {
                 base.AddRange(collection);
+                OnPropertyChanged();
             }
         }
 
         public static implicit operator Dictionary<string, double>(MAVLinkParamList list)
         {
             var copy = new Dictionary<string, double>();
-            foreach (MAVLinkParam item in list.ToArray())
+            lock (list.locker)
             {
-                copy[item.Name] = item.Value;
+                foreach (MAVLinkParam item in list.ToArray())
+                {
+                    copy[item.Name] = item.Value;
+                }
             }
 
             return copy;

@@ -315,7 +315,7 @@ namespace MissionPlanner.GCSViews.ConfigurationView
         private Timer timer;
         private TcpListener listener;
 
-        private async void myDataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
+        private void myDataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             // Ignore clicks that are not on button cells. 
             if (e.RowIndex < 0) return;
@@ -585,6 +585,21 @@ namespace MissionPlanner.GCSViews.ConfigurationView
                                 if (frame.MsgTypeID == uavcan.UAVCAN_EQUIPMENT_GNSS_RTCMSTREAM_DT_ID)
                                 {
                                     var data = msg as uavcan.uavcan_equipment_gnss_RTCMStream;
+                                    try
+                                    {
+                                        rtcmbps += data.data_len;
+                                        st.Write(data.data, 0, data.data_len);
+                                        st.Flush();
+                                    }
+                                    catch
+                                    {
+                                        client = null;
+                                    }
+                                }
+
+                                if (frame.MsgTypeID == uavcan.ARDUPILOT_GNSS_MOVINGBASELINEDATA_DT_ID)
+                                {
+                                    var data = msg as uavcan.ardupilot_gnss_MovingBaselineData;
                                     try
                                     {
                                         rtcmbps += data.data_len;

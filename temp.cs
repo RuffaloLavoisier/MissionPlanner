@@ -541,7 +541,7 @@ namespace MissionPlanner
             for (a = 0; a < 1000000; a++)
             {
                 var obj = (object)new MAVLink.mavlink_heartbeat_t();
-                MavlinkUtil.ByteArrayToStructure(array, ref obj, 6);
+                MavlinkUtil.ByteArrayToStructure(array, ref obj, 6, 5);
             }
             end = DateTime.Now;
             Console.WriteLine("ByteArrayToStructure " + (end - start).TotalMilliseconds);
@@ -566,7 +566,26 @@ namespace MissionPlanner
                 var ans3 = MavlinkUtil.ByteArrayToStructureGC<MAVLink.mavlink_heartbeat_t>(array, 6);
             }
             end = DateTime.Now;
+            Console.WriteLine("ByteArrayToStructureGC<T> " + (end - start).TotalMilliseconds);
+
+            start = DateTime.Now;
+            for (a = 0; a < 1000000; a++)
+            {
+                var ans4 = MavlinkUtil.ByteArrayToStructureGC(array, typeof(MAVLink.mavlink_heartbeat_t), 6, 5);
+            }
+            end = DateTime.Now;
             Console.WriteLine("ByteArrayToStructureGC " + (end - start).TotalMilliseconds);
+
+            start = DateTime.Now;
+            for (a = 0; a < 1000000; a++)
+            {
+                var ans4 = MavlinkUtil.ByteArrayToStructureGCArray(array, typeof(MAVLink.mavlink_heartbeat_t), 6, 5);
+            }
+            end = DateTime.Now;
+            Console.WriteLine("ByteArrayToStructureGCArray " + (end - start).TotalMilliseconds);
+
+
+            
         }
 
         private void but_armandtakeoff_Click(object sender, EventArgs e)
@@ -805,19 +824,6 @@ namespace MissionPlanner
 
             // setup bitmap to screen
             flow.newImage += (s, eh) => imagebox.Image = (Image)eh.Image.Clone();
-        }
-
-        private void myButton2_Click(object sender, EventArgs e)
-        {
-            var sp = new Sphere();
-
-            sp.Dock = DockStyle.Fill;
-
-            var frm = new Form();
-
-            frm.Controls.Add(sp);
-
-            frm.Show();
         }
 
         private async void but_gpsinj_Click(object sender, EventArgs e)
@@ -1176,16 +1182,18 @@ namespace MissionPlanner
             string input = "";
             InputBox.Show("input", "enter the hex byte data", ref input, false, true);
 
+            var ishex = input.Contains("0x") || input.ToLower().Any(a => a >= 'a' && a <= 'f');
+
             var split = input.Replace("0x", ",").Split(new char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-            var buffer = split.Select(a => Convert.ToByte(a, 16));
+            var buffer = split.Select(a => ishex ? Convert.ToByte(a, 16) : (byte)Convert.ToInt32(a, 10));
 
             MAVLink.MavlinkParse parse = new MAVLink.MavlinkParse();
 
             var packet = parse.ReadPacket(new MemoryStream(buffer.ToArray()));
 
             CustomMessageBox.Show(packet?.ToString() +
-                                  "\n" + packet.ToJSON().WrapText(5, new[] { ',' }));
+                                  "\n" + packet.ToJSON(Formatting.Indented));
         }
 
         private void but_acbarohight_Click(object sender, EventArgs e)

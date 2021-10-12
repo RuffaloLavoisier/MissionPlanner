@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -277,7 +278,6 @@ namespace MissionPlanner.Utilities
 
             indexcachelineno = -1;
         }
-
         private void BuildUnitMultiList()
         {
             foreach (var msgtype in FMT)
@@ -433,6 +433,7 @@ namespace MissionPlanner.Utilities
         public void Clear()
         {
             basestream.Close();
+            basestream.Dispose();
             _count = 0;
             linestartoffset.Clear();
         }
@@ -464,9 +465,24 @@ namespace MissionPlanner.Utilities
 
         public IEnumerable<DFLog.DFItem> GetEnumeratorType(string[] types)
         {
+            Dictionary<string, string> instances = new Dictionary<string, string>();
+
+            types.ForEach(x =>
+            {
+                var m = Regex.Match(x, @"(\w+)(\[([0-9]+)\])?", RegexOptions.None);
+                if (m.Success)
+                {
+                    instances[m.Groups[1].ToString()] = m.Groups[2].Success ? m.Groups[2].ToString() : "";
+                }
+                else
+                {
+                    instances[x] = "";
+                }
+            });
+
             // get the ids for the passed in types
             List<long> slist = new List<long>();
-            foreach (var type in types.Distinct())
+            foreach (var type in instances.Keys)
             {
                 if (dflog.logformat.ContainsKey(type))
                 {
@@ -485,7 +501,12 @@ namespace MissionPlanner.Utilities
             // work through list of lines
             foreach (var l in slist)
             {
-                yield return this[(long) l];
+                var ans = this[(long) l];
+                var inst = instances[ans.msgtype];
+                // instance was requested, and its not a match
+                if (inst != "" && ans.instance != inst)
+                    continue;
+                yield return ans;
             }
         }
         
@@ -550,6 +571,22 @@ namespace MissionPlanner.Utilities
                 return new Tuple<string, double>("", 1);
 
             return new Tuple<string, double>(answer.First().Item3, answer.First().Item4);
+        }
+        
+        public int getInstanceIndex(string type)
+        {
+            if(!dflog.logformat.ContainsKey(type))
+                return -1;
+
+            var typeno = dflog.logformat[type].Id;
+
+            if(!FMTU.ContainsKey(typeno))
+                return -1;
+
+            var unittypes = FMTU[typeno].Item1;
+
+            int colinst = unittypes.IndexOf("#") + 1;
+            return colinst;
         }
     }
 }

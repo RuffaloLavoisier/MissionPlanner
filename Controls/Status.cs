@@ -21,6 +21,9 @@ namespace MissionPlanner.Controls
             get { return _percent;}
             set
             {
+                if (value < 0 || value > 100)
+                    return;
+
                 _percent = value;
                 this.BeginInvoke((Action) delegate { this.Visible = true; });
                 _hidetimer.Change(TimeSpan.FromSeconds(10), TimeSpan.Zero);
@@ -51,7 +54,17 @@ namespace MissionPlanner.Controls
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            e.Graphics.FillRectangle(Brushes.Green, 0, 0, (float)(Width * (_percent / 100.0)), Height);
+            if (_percent > 100)
+                _percent = 50;
+
+            try
+            {
+                e.Graphics.FillRectangle(Brushes.Green, 0, 0, (float) (Width * (_percent / 100.0)), Height);
+            }
+            catch (OverflowException)
+            {
+
+            }
         }
 
         protected override void OnPaintBackground(PaintEventArgs e)

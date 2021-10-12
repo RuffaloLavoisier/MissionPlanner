@@ -389,15 +389,14 @@ namespace generator
                 gen = new generator();
                 // force it to the top of the container to push down the tabcontrol
                 gen.Dock = DockStyle.Top;
-                
+                loopratehz = 1f;
 
                 return true;
             }
 
             public override bool Loop()
             {
-
-                if (MainV2.comPort.BaseStream.IsOpen)
+                if (MainV2.comPort.BaseStream.IsOpen || MainV2.comPort.logreadmode)
                 {
                     if (sub == null)
                         sub = MainV2.comPort.SubscribeToPacketType(MAVLink.MAVLINK_MSG_ID.GENERATOR_STATUS, message =>

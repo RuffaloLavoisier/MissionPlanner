@@ -1,11 +1,14 @@
 ﻿using GMap.NET;
 using GMap.NET.WindowsForms;
 using GMap.NET.WindowsForms.Markers;
+using log4net;
 using MissionPlanner.ArduPilot;
 using MissionPlanner.Maps;
 using MissionPlanner.Utilities;
 using System;
 using System.Drawing;
+using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
@@ -13,25 +16,68 @@ namespace MissionPlanner
 {
     public static class Common
     {
-        public static GMapMarker getMAVMarker(MAVState MAV)
+        private static readonly ILog log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+
+        public static GMapMarker getMAVMarker(MAVState MAV, GMapOverlay overlay = null)
         {
-            PointLatLng portlocation = new PointLatLng(MAV.cs.lat, MAV.cs.lng);
+            PointLatLng portlocation = MAV.cs.Location;
+
+            if(overlay!= null)
+            {
+                var existing = overlay.Markers.Where((a)=>a.Tag == MAV);                
+                if (existing.Count() > 1)
+                {
+                    existing.Skip(1).ToArray().ForEach((a) => { overlay.Markers.Remove(a);});
+                }
+                if(existing.Count() > 0) {
+                    var item = existing.First();
+                    if (item is GMapMarkerPlane)
+                    {
+                        var itemp = (GMapMarkerPlane)item;
+                        itemp.Position = portlocation;
+                        itemp.Heading = MAV.cs.yaw;
+                        itemp.Cog = MAV.cs.groundcourse;
+                        itemp.Target = MAV.cs.target_bearing;
+                        itemp.Nav_bearing = MAV.cs.nav_bearing;
+                        itemp.Radius = MAV.cs.radius * CurrentState.multiplierdist;
+                        return null;
+                    }
+                    else if (item is GMapMarkerQuad)
+                    {
+                        var itemq = (GMapMarkerQuad)item;
+                        itemq.Position = portlocation;
+                        itemq.Heading = MAV.cs.yaw;
+                        itemq.Cog = MAV.cs.groundcourse;
+                        itemq.Target = MAV.cs.nav_bearing;
+                        itemq.Sysid = MAV.sysid;
+                        return null;
+                    }
+                    else if (item is GMapMarkerRover)
+                    {
+                        var itemr = (GMapMarkerRover)item;
+                        itemr.Position = portlocation;
+                        itemr.Heading = MAV.cs.yaw;
+                        itemr.Cog = MAV.cs.groundcourse;
+                        itemr.Target = MAV.cs.nav_bearing;
+                        itemr.Nav_bearing = MAV.cs.nav_bearing;
+                        return null;
+                    }
+                    else
+                    {
+                        existing.ForEach((a)=> overlay.Markers.Remove(a));
+                    }
+                }
+            }
 
             if (MAV.aptype == MAVLink.MAV_TYPE.FIXED_WING || MAV.aptype >= MAVLink.MAV_TYPE.VTOL_DUOROTOR && MAV.aptype <= MAVLink.MAV_TYPE.VTOL_RESERVED5)
             {
-                // colorise map marker/s based on their sysid, for common sysid/s used 1-6, 11-16, and 101-106
-                // its rare for ArduPilot to be used to fly more than 6 planes at a time from one console.
-                int which = 0; // default 0=red for other sysids
-                if ((MAV.sysid >= 1) && (MAV.sysid <= 6)) { which = MAV.sysid - 1; }  //1=black, 2=blue, 3=green,4=yellow,5=orange,6=red
-                if ((MAV.sysid >= 11) && (MAV.sysid <= 16)) { which = MAV.sysid - 11; }  //1=black, 2=blue, 3=green,4=yellow,5=orange,6=red
-                if ((MAV.sysid >= 101) && (MAV.sysid <= 106)) { which = MAV.sysid - 101; }  //1=black, 2=blue, 3=green,4=yellow,5=orange,6=red
-
-                return (new GMapMarkerPlane(which, portlocation, MAV.cs.yaw,
+                return (new GMapMarkerPlane(MAV.sysid - 1, portlocation, MAV.cs.yaw,
                     MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.cs.target_bearing,
                     MAV.cs.radius * CurrentState.multiplierdist)
                 {
                     ToolTipText = ArduPilot.Common.speechConversion(MAV, "" + Settings.Instance["mapicondesc"]),
-                    ToolTipMode = String.IsNullOrEmpty(Settings.Instance["mapicondesc"]) ? MarkerTooltipMode.Never : MarkerTooltipMode.Always
+                    ToolTipMode = String.IsNullOrEmpty(Settings.Instance["mapicondesc"]) ? MarkerTooltipMode.Never : MarkerTooltipMode.Always,
+                    Tag = MAV
                 });
             }
             else if (MAV.aptype == MAVLink.MAV_TYPE.GROUND_ROVER)
@@ -40,28 +86,35 @@ namespace MissionPlanner
                     MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.cs.target_bearing)
                 {
                     ToolTipText = MAV.cs.alt.ToString("0") + "\n" + MAV.sysid.ToString("sysid: 0"),
-                    ToolTipMode = MarkerTooltipMode.Always
+                    ToolTipMode = MarkerTooltipMode.Always,
+                    Tag = MAV
                 });
             }
             else if (MAV.aptype == MAVLink.MAV_TYPE.SURFACE_BOAT)
             {
                 return (new GMapMarkerBoat(portlocation, MAV.cs.yaw,
-                    MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.cs.target_bearing));
+                    MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.cs.target_bearing){  Tag = MAV});
             }
             else if (MAV.aptype == MAVLink.MAV_TYPE.SUBMARINE)
             {
                 return (new GMapMarkerSub(portlocation, MAV.cs.yaw,
-                    MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.cs.target_bearing));
+                    MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.cs.target_bearing){ Tag = MAV});
             }
             else if (MAV.aptype == MAVLink.MAV_TYPE.HELICOPTER)
             {
                 return (new GMapMarkerHeli(portlocation, MAV.cs.yaw,
-                    MAV.cs.groundcourse, MAV.cs.nav_bearing));
+                    MAV.cs.groundcourse, MAV.cs.nav_bearing){ Tag = MAV});
             }
             else if (MAV.cs.firmware == Firmwares.ArduTracker)
             {
                 return (new GMapMarkerAntennaTracker(portlocation, MAV.cs.yaw,
-                    MAV.cs.target_bearing));
+                    MAV.cs.target_bearing){ Tag = MAV});
+            }
+            else if (MAV.aptype == MAVLink.MAV_TYPE.COAXIAL)
+            {
+                return (new GMapMarkerSingle(portlocation, MAV.cs.yaw,
+                   MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.sysid)
+                { Tag = MAV });
             }
             else if (MAV.cs.firmware == Firmwares.ArduCopter2 || MAV.aptype == MAVLink.MAV_TYPE.QUADROTOR)
             {
@@ -73,7 +126,8 @@ namespace MissionPlanner
                         MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.sysid)
                     {
                         danger = (int)f,
-                        warn = (int)w
+                        warn = (int)w,
+                        Tag = MAV
                     });
                 }
 
@@ -81,18 +135,14 @@ namespace MissionPlanner
                         MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.sysid)
                 {
                     ToolTipText = ArduPilot.Common.speechConversion(MAV, "" + Settings.Instance["mapicondesc"]),
-                    ToolTipMode = String.IsNullOrEmpty(Settings.Instance["mapicondesc"]) ? MarkerTooltipMode.Never : MarkerTooltipMode.Always
+                    ToolTipMode = String.IsNullOrEmpty(Settings.Instance["mapicondesc"]) ? MarkerTooltipMode.Never : MarkerTooltipMode.Always,
+                    Tag = MAV
                 });
-            }
-            else if (MAV.aptype == MAVLink.MAV_TYPE.COAXIAL)
-            {
-                return (new GMapMarkerSingle(portlocation, MAV.cs.yaw,
-                   MAV.cs.groundcourse, MAV.cs.nav_bearing, MAV.sysid));
             }
             else
             {
                 // unknown type
-                return (new GMarkerGoogle(portlocation, GMarkerGoogleType.green_dot));
+                return (new GMarkerGoogle(portlocation, GMarkerGoogleType.green_dot) { Tag = MAV });
             }
         }
         public static Form LoadingBox(string title, string promptText)
@@ -156,7 +206,7 @@ namespace MissionPlanner
             form.Text = title;
             label.Text = promptText;
 
-            chk.Tag = ("SHOWAGAIN_" + title.Replace(" ", "_").Replace('+', '_'));
+            chk.Tag = ($"SHOWAGAIN_{title.Replace(" ", "_").Replace('+', '_')}");
             chk.AutoSize = true;
             chk.Text = Strings.ShowMeAgain;
             chk.Checked = true;
@@ -205,7 +255,7 @@ namespace MissionPlanner
                     }
                     catch (Exception)
                     {
-                        CustomMessageBox.Show("Failed to open link " + ((LinkLabel)sender).Tag.ToString());
+                        CustomMessageBox.Show($"Failed to open link {((LinkLabel)sender).Tag}");
                     }
                 };
 

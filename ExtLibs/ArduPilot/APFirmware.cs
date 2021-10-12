@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using log4net;
 using MissionPlanner.Utilities;
 
@@ -17,6 +18,12 @@ namespace MissionPlanner.ArduPilot
         private static readonly ILog log =
             LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
 
+
+        static APFirmware()
+        {
+            // bg get list
+            Task.Run(() => GetList());
+        }
         public class FirmwareInfo
         {
             [JsonProperty("board_id", NullValueHandling = NullValueHandling.Ignore)]
@@ -57,6 +64,9 @@ namespace MissionPlanner.ArduPilot
             [JsonProperty("mav-firmware-version-major", NullValueHandling = NullValueHandling.Ignore)]
             public long MavFirmwareVersionMajor { get; set; }
 
+            [JsonProperty("mav-firmware-version-str", NullValueHandling = NullValueHandling.Ignore)]
+            public string MavFirmwareVersionStr { get; set; }            
+
             [JsonProperty("latest")] public long Latest { get; set; }
         }
 
@@ -85,41 +95,51 @@ namespace MissionPlanner.ArduPilot
             SUBMARINE
         }
 
+        private static object getListlock = new object();
+
         public static void GetList(string url = "https://firmware.ardupilot.org/manifest.json.gz", bool force = false)
         {
-            if (force == false && Manifest != null)
-                return;
+            lock (getListlock)
+            {
+                if (force == false && Manifest != null)
+                    return;
 
-            log.Info(url);
+                log.Info(url);
 
-            var client = new HttpClient();
+                var client = new HttpClient();
 
-            if (!String.IsNullOrEmpty(Settings.Instance.UserAgent))
-                client.DefaultRequestHeaders.Add("User-Agent", Settings.Instance.UserAgent);
+                if (!String.IsNullOrEmpty(Settings.Instance.UserAgent))
+                    client.DefaultRequestHeaders.Add("User-Agent", Settings.Instance.UserAgent);
 
-            var manifestgz = client.GetByteArrayAsync(url).GetAwaiter().GetResult();
-            var mssrc = new MemoryStream(manifestgz);
-            var msdest = new MemoryStream();
-            GZipStream gz = new GZipStream(mssrc, CompressionMode.Decompress);
-            gz.CopyTo(msdest);
-            msdest.Position = 0;
-            var manifest = new StreamReader(msdest).ReadToEnd();
-            
-            Manifest = JsonConvert.DeserializeObject<ManifestRoot>(manifest);
+                var manifestgz = client.GetByteArrayAsync(url).GetAwaiter().GetResult();
+                var mssrc = new MemoryStream(manifestgz);
+                var msdest = new MemoryStream();
+                GZipStream gz = new GZipStream(mssrc, CompressionMode.Decompress);
+                gz.CopyTo(msdest);
+                msdest.Position = 0;
+                var manifest = new StreamReader(msdest).ReadToEnd();
 
-            log.Info(Manifest.Firmware?.Length);
+                Manifest = JsonConvert.DeserializeObject<ManifestRoot>(manifest);
+
+                log.Info(Manifest.Firmware?.Length);
+            }
         }
 
         public static ManifestRoot Manifest { get; set; }
 
-        public static long? GetBoardID(DeviceInfo device)
+        public static long? GetBoardID(DeviceInfo device, bool boardidcheck = true)
         {
             GetList();
 
+            log.Info("device: "+device.ToJSON());
+
             // match the board description
             var ans = Manifest.Firmware.Where(a => (
-                                                       a.Platform == device.board ||
-                                                       a.BootloaderStr.Any(b => b == device.board)) && a.BoardId != 0);
+                a.Platform?.ToLower() == device.board?.ToLower() ||
+                a.BootloaderStr.Any(b => b?.ToLower() == device.board?.ToLower())));
+
+            if (boardidcheck)
+                ans = ans.Where(a => a.BoardId != 0);
 
             if (ans.Any())
             {
@@ -152,9 +172,12 @@ namespace MissionPlanner.ArduPilot
         {
             GetList();
 
+            log.Info("device: "+device.ToJSON());
+
             // match the board description
-            var ans = Manifest.Firmware.Where(a =>
-                a.Platform == device.board || a.BootloaderStr.Any(b => b == device.board));
+            var ans = Manifest.Firmware.Where(a => (
+                a.Platform?.ToLower() == device.board?.ToLower() ||
+                a.BootloaderStr.Any(b => b?.ToLower() == device.board?.ToLower())) && a.BoardId != 0);
 
             // ignore platform
             ans = Manifest.Firmware;

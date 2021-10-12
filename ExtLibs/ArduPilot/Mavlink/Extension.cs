@@ -14,6 +14,7 @@ public static class Extension
         return JsonConvert.DeserializeObject<MAVLink.MAVLinkMessage>(msg);
     }
 
+
     public static string WrapText(this string msg, int length, char[] spliton)
     {
         StringBuilder ans = new StringBuilder();

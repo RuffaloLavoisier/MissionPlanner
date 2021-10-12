@@ -152,8 +152,10 @@ namespace MissionPlanner.Log
                 return this.isValid;
             }
 
-            public static string GetNodeName(string parent, string child)
+            public static string GetNodeName(string parent,int instance, string child)
             {
+                if (instance >= 0)
+                    return parent + "[" + instance + "]." + child;
                 return parent + "." + child;
             }
         }
@@ -837,7 +839,7 @@ namespace MissionPlanner.Log
         {
             log.InfoFormat("GraphItem: {0} {1} {2}", type, fieldname, instance);
             DataModifer dataModifier = new DataModifer();
-            string nodeName = DataModifer.GetNodeName(type, fieldname);
+            string nodeName = DataModifer.GetNodeName(type, instance != "" ? int.Parse(instance) : -1, fieldname);
 
             foreach (var curve in zg1.GraphPane.CurveList)
             {
@@ -939,7 +941,7 @@ namespace MissionPlanner.Log
                     else
                         newlist.Add(new PointPair(a.Item1.lineno, a.Item2));
                 });
-                GraphItem_AddCurve(newlist, type, fieldname, left, instance);
+                GraphItem_AddCurve(newlist, type, fieldname, left, instance, isexpression);
             }
         }
 
@@ -965,7 +967,7 @@ namespace MissionPlanner.Log
 
             Dictionary<string, List<string>> fieldsUsed = new Dictionary<string, List<string>>();
 
-            var fieldmatchs = Regex.Matches(expression, @"(([A-z0-9_]{2,20})\.([A-z0-9_]+))");
+            var fieldmatchs = Regex.Matches(expression, @"(([A-z0-9_]{2,20})\.([A-z0-9_]+))|([A-z0-9_]{2,20})");
 
             if (fieldmatchs.Count > 0)
             {
@@ -973,6 +975,9 @@ namespace MissionPlanner.Log
                 {
                     var type = match.Groups[2].Value.ToString();
                     var field = match.Groups[3].Value.ToString();
+
+                    if (type == "")
+                        type = match.Groups[4].Value.ToString();
 
                     if (!fieldsUsed.ContainsKey(type))
                         fieldsUsed[type] = new List<string>();
@@ -991,8 +996,11 @@ namespace MissionPlanner.Log
 
                 //scope.SetVariable(logformatKey, ans);
             }
-
+            
             List<Tuple<DFLog.DFItem, double>> answer = new List<Tuple<DFLog.DFItem, double>>();
+
+            if (!fieldsUsed.Any(x => dflog.logformat.ContainsKey(x.Key)))
+                return answer;
 
             scope.SetVariable("answer", answer);
 
@@ -1016,6 +1024,8 @@ from rotmat import *
 
 exp_as_func = eval('lambda: ' + ""{1}"")
 
+invalid = 0
+
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
@@ -1023,10 +1033,14 @@ class AttrDict(dict):
 
 def evaluate_expression():
     '''evaluation an expression'''
+    global invalid
     try:
         v = exp_as_func()
     except NameError as ne:
-        print ne
+        print ne, invalid 
+        invalid = invalid + 1
+        if invalid > 200:
+            raise ne
         return None
     except ZeroDivisionError:
         print ZeroDivisionError
@@ -1040,6 +1054,8 @@ def main():
     vars = {{}}
     a=0
     for line in logdata.GetEnumeratorType(System.Array[System.String]({0})):
+        if line.instance != '' and line.instance != '0':
+            continue
         globals()[line.msgtype] = AttrDict(line.ToDictionary())
         v = evaluate_expression()
         a += 1
@@ -1225,7 +1241,7 @@ main()
             return colours[zg1.GraphPane.CurveList.Count % colours.Length];
         }
 
-        void GraphItem_AddCurve(PointPairList list1, string type, string header, bool left, string instance)
+        void GraphItem_AddCurve(PointPairList list1, string type, string header, bool left, string instance, bool isexpression = false)
         {
             if (list1.Count < 1)
             {
@@ -1236,6 +1252,10 @@ main()
             var ans = logdata.GetUnit(type, header);
             string unit = ans.Item1;
             double multiplier = ans.Item2;
+
+            // this is so precaned graphs draw on a singel axis
+            if (isexpression)
+                unit = "";
 
             if (unit != "")
                 header += " (" + unit + ")";
@@ -2647,8 +2667,13 @@ main()
             }
 
             string dataModifer_str = "";
-            string nodeName =
-                DataModifer.GetNodeName(treeView1.SelectedNode.Parent.Text, treeView1.SelectedNode.Text);
+            string nodeName = "";
+            if(treeView1.SelectedNode.Parent.Parent != null)
+                nodeName = DataModifer.GetNodeName(treeView1.SelectedNode.Parent.Parent.Text, int.Parse(treeView1.SelectedNode.Parent.Text), treeView1.SelectedNode.Text);
+            else 
+                nodeName = DataModifer.GetNodeName(treeView1.SelectedNode.Parent.Text, -1, treeView1.SelectedNode.Text);
+
+
 
             if (dataModifierHash.ContainsKey(nodeName))
             {
@@ -2674,24 +2699,18 @@ main()
             }
         }
 
-        private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        private void treeView1_AfterCheck(object sender, TreeViewEventArgs e)
         {
             toolTip1.Hide(treeView1);
 
             if (e.Node != null && e.Node.Parent != null)
             {
-                // set the check if we right click
-                if (e.Button == System.Windows.Forms.MouseButtons.Right)
-                {
-                    e.Node.Checked = !e.Node.Checked;
-                }
-
                 var nodepath = e.Node.FullPath;
                 var parts = nodepath.Split('\\');
 
                 if (e.Node.Checked)
                 {
-                    if (e.Button == System.Windows.Forms.MouseButtons.Right)
+                    if (wasrightclick)
                     {
                         if (parts.Length == 3)
                             GraphItem(parts[0], parts[2], false, true, false, parts[1]);
@@ -2753,7 +2772,7 @@ main()
                     }
                     else
                     {
-                        GraphItem(item.type, item.field, item.left, false);
+                        GraphItem(item.type + "." + item.field, "", item.left, false, true);
                     }
                 }
                 catch
@@ -3321,6 +3340,7 @@ main()
 
         bool mousedown = false;
         private PointLatLng MouseDownStart;
+        private bool wasrightclick;
 
         private void myGMAP1_MouseDown(object sender, MouseEventArgs e)
         {
@@ -3407,6 +3427,20 @@ main()
             MainV2.comPort.MAV.param.AddRange(parmdata);
 
             var frm = new ConfigRawParamsTree().ShowUserControl();
+        }
+
+        private void treeView1_MouseDown(object sender, MouseEventArgs e)
+        {
+            wasrightclick = e.Button == MouseButtons.Right;
+            if (wasrightclick)
+            {
+                var pos = treeView1.PointToClient(Control.MousePosition);
+                var node = treeView1.GetNodeAt(pos);
+                if (node != null)
+                {
+                    node.Checked = !node.Checked;
+                }
+            }
         }
     }
 }

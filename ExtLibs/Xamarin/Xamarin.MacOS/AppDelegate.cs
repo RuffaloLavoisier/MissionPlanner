@@ -7,6 +7,7 @@ using MissionPlanner.ArduPilot;
 using Xamarin.Forms.Platform.MacOS;
 using Xamarin.Forms;
 using MissionPlanner.Comms;
+using Xamarin.GCSViews;
 
 namespace Xamarin.MacOS
 {
@@ -26,6 +27,10 @@ namespace Xamarin.MacOS
             Test.BlueToothDevice = new BTDevice();
             Test.UsbDevices = new USBDevices();
             Test.Radio = new Radio();
+            Test.GPS = new GPS();
+            Test.SystemInfo = new SystemInfo();
+
+            WinForms.OSX = true;
 
             new System.Drawing.android.android();
         }

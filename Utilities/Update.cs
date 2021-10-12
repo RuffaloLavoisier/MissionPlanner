@@ -14,6 +14,7 @@ using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Org.BouncyCastle.Crypto.Digests;
 
 namespace MissionPlanner.Utilities
 {
@@ -64,9 +65,9 @@ namespace MissionPlanner.Utilities
                 string exePath = Path.GetDirectoryName(Application.ExecutablePath);
                 if (MONO)
                 {
-                    process.StartInfo.FileName = "mono";
-                    process.StartInfo.Arguments = " \"" + exePath + Path.DirectorySeparatorChar + "Updater.exe\"" +
-                                                  "  \"" + Application.ExecutablePath + "\"";
+                    process.StartInfo.FileName = "/bin/bash";
+                    process.StartInfo.Arguments = " -c 'mono \"" + exePath + Path.DirectorySeparatorChar + "Updater.exe\"" +
+                                                  "  \"" + Application.ExecutablePath + "\"'";
                 }
                 else
                 {
@@ -311,7 +312,7 @@ namespace MissionPlanner.Utilities
                 int count = tasklist.Count(a =>
                 {
                     a.Item3.Wait();
-                    return !a.Item3.Result;
+                    return !a.Item3.GetAwaiter().GetResult();
                 });
 
                 // parallel download
@@ -343,7 +344,7 @@ namespace MissionPlanner.Utilities
                     string hash = task.Item2;
                     // check if existing matchs hash
                     task.Item3.Wait();
-                    bool match = task.Item3.Result;
+                    bool match = task.Item3.GetAwaiter().GetResult();
 
                     if (!match)
                     {
@@ -408,11 +409,14 @@ namespace MissionPlanner.Utilities
             {
                 if (File.Exists(filename))
                 {
-                    using (var md5 = MD5.Create())
+                    var md5 = new MD5Digest();
                     {
                         using (var stream = File.OpenRead(filename))
                         {
-                            var answer = BitConverter.ToString(md5.ComputeHash(stream)).Replace("-", "").ToLower();
+                            stream.ReadChunks().ForEach(a => md5.BlockUpdate(a, 0, a.Length));
+                            var result = new byte[md5.GetDigestSize()];
+                            md5.DoFinal(result, 0);
+                            var answer = BitConverter.ToString(result).Replace("-", "").ToLower();
 
                             log.Debug(filename + "," + hash + "," + answer);
 
@@ -630,6 +634,7 @@ namespace MissionPlanner.Utilities
             #region Fetch Parameter Meta Data
 
             var progressReporterDialogue = ((IProgressReporterDialogue)sender);
+            /*
             progressReporterDialogue.UpdateProgressAndStatus(-1, "Getting updated parameter documentation");
 
             try
@@ -652,7 +657,7 @@ namespace MissionPlanner.Utilities
                 log.Error(ex.ToString());
                 CustomMessageBox.Show("Error getting Parameter Information");
             }
-
+            */
             #endregion Fetch Parameter Meta Data
 
             progressReporterDialogue.UpdateProgressAndStatus(-1, "Getting Base URL");

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -22,7 +23,7 @@ namespace MissionPlanner.WebAPIs
         public string URL { get; set; } = "https://{0}/api/1.0";
         public string WS { get; set; } = "wss://{0}/ws";
 
-        public static Dictionary<string, VehicleTick> Vehicles = new Dictionary<string, VehicleTick>();
+        public static ConcurrentDictionary<string, VehicleTick> Vehicles = new ConcurrentDictionary<string, VehicleTick>();
 
         /// <summary>
         /// Auth then Start
@@ -36,6 +37,16 @@ namespace MissionPlanner.WebAPIs
 
         public async Task Auth(string email, string password, string server)
         {
+<<<<<<< HEAD
+=======
+            // if port 80, change url to non secure
+            if (server.EndsWith(":80"))
+            {
+                URL = "http://{0}/api/1.0";
+                WS =  "ws://{0}/ws";
+            }
+
+>>>>>>> upstream/master
             Console.WriteLine("Dowding Auth");
             Configuration = new Configuration(new ApiClient(String.Format(URL, server)));
 
@@ -55,13 +66,20 @@ namespace MissionPlanner.WebAPIs
             Configuration.AddApiKey("Authorization", "Bearer " + customtoken);
         }
 
+<<<<<<< HEAD
         public async Task Start(string server)
         {
             Console.WriteLine("Dowding Start");
             // starting point - get last 120seconds with the very last point of each
+=======
+        public async Task<WebSocket> Start(string server)
+        {
+            Console.WriteLine("Dowding Start");
+            // starting point - get last 120seconds with the very last point of each, max of 100 nodes
+>>>>>>> upstream/master
             var contacts =
-                (await GetContact(minTs: DateTime.UtcNow.AddSeconds(-120).toUnixTime().ToString(), thin: true,
-                    limit: 100)).OrderBy(a => a.VehicleLastTs).ToList();
+                (await GetContact(minTs: DateTime.UtcNow.AddSeconds(-120).toUnixTime().ToString(), thin: true))
+                .OrderByDescending(a => a.VehicleLastTs).Take(100).ToList();
 
             contacts.ForEach(a =>
                 {
@@ -71,19 +89,23 @@ namespace MissionPlanner.WebAPIs
                 }
             );
 
+<<<<<<< HEAD
             var ws = await StartWS<VehicleTick>(server);
+=======
+            var ws = await StartWS(server);
+>>>>>>> upstream/master
 
             ws.MessageReceived += (sender, args) =>
             {
-                var tick = JsonConvert.DeserializeObject<VehicleTick>(args.Message);
+                var tick = JsonConvert.DeserializeObject<WSPackaging<VehicleTick>>(args.Message);
 
-                Vehicles[tick.Id] = tick;
+                Vehicles[tick.data.Id] = tick.data;
             };
 
             // on fail, wait 60 seconds and reconnect
             ws.Closed += (sender, args) =>
             {
-                Thread.Sleep(60000); 
+                Thread.Sleep(60000);
                 ws.OpenAsync();
             };
 
@@ -91,6 +113,8 @@ namespace MissionPlanner.WebAPIs
             {
                 Console.WriteLine(args.Exception);
             };
+
+            return ws;
         }
 
         public async Task<List<AgentTick>> GetAgents()
@@ -127,10 +151,13 @@ namespace MissionPlanner.WebAPIs
         /// <summary>
         /// 
         /// </summary>
-        /// <typeparam name="T"></typeparam>
         /// <param name="type">contacts/vehicle_ticks/operator_ticks/homepoints/events</param>
         /// <returns></returns>
+<<<<<<< HEAD
         public async Task<WebSocket> StartWS<T>(string server, string type = "vehicle_ticks")
+=======
+        public async Task<WebSocket> StartWS(string server, string type = "vehicle_ticks")
+>>>>>>> upstream/master
         {
             Console.WriteLine("Dowding StartWS");
             var ws = new WebSocket(String.Format(WS, server));
@@ -154,6 +181,13 @@ namespace MissionPlanner.WebAPIs
             ws.Error += (sender, args) => { };
 
             return ws;
+        }
+
+        public class WSPackaging<T>
+        {
+            public string datatype { get; set; }
+            public T data { get; set; }
+            public string operation { get; set; }
         }
     }
 }

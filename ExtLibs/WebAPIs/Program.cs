@@ -15,15 +15,10 @@ namespace MissionPlanner.WebAPIs
         [STAThread]
         public static void Main(string[] args)
         {
-            DoIt();
 
-            while (true)
-            {
-                Thread.Sleep(1000);
-                Console.Write(".");
-            }
         }
 
+<<<<<<< HEAD
         private static async void DoIt()
         {
             var dowd = new Dowding();
@@ -51,6 +46,8 @@ namespace MissionPlanner.WebAPIs
             // Debugger.Break();
         }
 
+=======
+>>>>>>> upstream/master
         internal static int toUnixTime(this DateTime dateTime)
         {
             return (int)dateTime.Subtract(new DateTime(1970, 1, 1)).TotalSeconds;

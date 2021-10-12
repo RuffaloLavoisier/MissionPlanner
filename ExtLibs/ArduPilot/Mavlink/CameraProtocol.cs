@@ -42,13 +42,13 @@ namespace MissionPlanner.ArduPilot.Mavlink
                             {
                                 if ((CameraInformation.flags & (int) MAVLink.CAMERA_CAP_FLAGS.CAPTURE_IMAGE) > 0)
                                     await parent.parent.doCommandAsync(parent.sysid, parent.compid,
-                                        MAVLink.MAV_CMD.REQUEST_CAMERA_SETTINGS, 0, 0, 0, 0, 0, 0, 0);
+                                        MAVLink.MAV_CMD.REQUEST_CAMERA_SETTINGS, 0, 0, 0, 0, 0, 0, 0).ConfigureAwait(false);
                                 if ((CameraInformation.flags & (int) MAVLink.CAMERA_CAP_FLAGS.CAPTURE_VIDEO) > 0)
                                     await parent.parent.doCommandAsync(parent.sysid, parent.compid,
-                                        MAVLink.MAV_CMD.REQUEST_VIDEO_STREAM_INFORMATION, 0, 0, 0, 0, 0, 0, 0);
+                                        MAVLink.MAV_CMD.REQUEST_VIDEO_STREAM_INFORMATION, 0, 0, 0, 0, 0, 0, 0).ConfigureAwait(false);
                                 if ((CameraInformation.flags & (int) MAVLink.CAMERA_CAP_FLAGS.CAPTURE_VIDEO) > 0)
                                     await parent.parent.doCommandAsync(parent.sysid, parent.compid,
-                                        MAVLink.MAV_CMD.REQUEST_STORAGE_INFORMATION, 0, 0, 0, 0, 0, 0, 0);
+                                        MAVLink.MAV_CMD.REQUEST_STORAGE_INFORMATION, 0, 0, 0, 0, 0, 0, 0).ConfigureAwait(false);
                             });
                         }
                         catch (Exception ex)
@@ -69,9 +69,16 @@ namespace MissionPlanner.ArduPilot.Mavlink
                             uri = uri.Substring(0, ind);
                         if (uri.ToLower().StartsWith("rtsp://"))
                         {
-                            Task.Run(async () =>
+                            Task.Run(() =>
                             {
-                                OnRTSPDetected?.Invoke(this, uri);
+                                try
+                                {
+                                    OnRTSPDetected?.Invoke(this, uri);
+                                }
+                                catch (Exception e)
+                                {
+                                    log.Error(e);
+                                }
                             });
                         }
                         break;

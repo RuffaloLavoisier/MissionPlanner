@@ -389,6 +389,27 @@ namespace MissionPlanner
         [GroupText("Position")]
         public float groundcourse2 { get; set; }
 
+
+        [DisplayText("Horizontal Accuracy")]
+        [GroupText("Position")]
+        public float gpsh_acc2 { get; private set; }
+
+        [DisplayText("Vertical Accuracy")]
+        [GroupText("Position")]
+        public float gpsv_acc2 { get; private set; }
+
+        [DisplayText("Velocity Accuracy")]
+        [GroupText("Position")]
+        public float gpsvel_acc2 { get; private set; }
+
+        [DisplayText("Heading Accuracy")]
+        [GroupText("Position")]
+        public float gpshdg_acc2 { get; private set; }
+
+        [DisplayText("GPS Yaw (deg)")]
+        [GroupText("Position")]
+        public float gpsyaw2 { get; private set; }
+
         [DisplayText("Sat Count Blend")]
         [GroupText("Position")]
         public float satcountB => satcount + satcount2;
@@ -576,6 +597,18 @@ namespace MissionPlanner
         [DisplayText("Mag3 Field")]
         [GroupText("Sensor")]
         public float magfield3 => (float)Math.Sqrt(Math.Pow(mx3, 2) + Math.Pow(my3, 2) + Math.Pow(mz3, 2));
+
+        // hygrometer
+        [DisplayText("hygrotemp (cdegC)")]
+        [GroupText("Sensor")]
+        public short hygrotemp { get; set; }
+
+        [DisplayText("hygrohumi (c%)")]
+        [GroupText("Sensor")]
+        public ushort hygrohumi { get; set; }
+
+        [GroupText("Sensor")]
+        public byte hygro_id { get; set; }
 
         //radio
         [GroupText("RadioIn")] public float ch1in { get; set; }
@@ -941,9 +974,11 @@ namespace MissionPlanner
         /// </summary>
         public string messageHigh
         {
-            get { if (DateTime.Now > _messageHighTime.AddSeconds(10)) return ""; return _messagehigh; }
+            get { if (DateTime.Now > _messageHighTime.AddSeconds(10)) return ""; return _messagehigh.TrimUnPrintable(); }
             set
             {
+                if(value == null || value == "")
+                    return;
                 // check against get
                 if (messageHigh == value)
                     return;
@@ -997,6 +1032,10 @@ namespace MissionPlanner
         public double battery_voltage8 { get; set; }
 
         [GroupText("Battery")]
+        [DisplayText("Bat Voltage (V)")]
+        public double battery_voltage9 { get; set; }
+
+        [GroupText("Battery")]
         [DisplayText("Bat Remaining (%)")]
         public int battery_remaining
         {
@@ -1035,6 +1074,10 @@ namespace MissionPlanner
         [GroupText("Battery")]
         [DisplayText("Bat Remaining (%)")]
         public int battery_remaining8 { get; set; }
+
+        [GroupText("Battery")]
+        [DisplayText("Bat Remaining (%)")]
+        public int battery_remaining9 { get; set; }
 
         [GroupText("Battery")]
         [DisplayText("Bat Current (Amps)")]
@@ -1097,6 +1140,10 @@ namespace MissionPlanner
         public double current8 { get; set; }
 
         [GroupText("Battery")]
+        [DisplayText("Bat9 Current (Amps)")]
+        public double current9 { get; set; }
+
+        [GroupText("Battery")]
         [DisplayText("Bat Watts")]
         public double watts => battery_voltage * current;
 
@@ -1119,8 +1166,34 @@ namespace MissionPlanner
         [GroupText("Battery")] public double battery_cell4 { get; set; }
         [GroupText("Battery")] public double battery_cell5 { get; set; }
         [GroupText("Battery")] public double battery_cell6 { get; set; }
+        [GroupText("Battery")] public double battery_cell7 { get; set; }
+        [GroupText("Battery")] public double battery_cell8 { get; set; }
+        [GroupText("Battery")] public double battery_cell9 { get; set; }
+        [GroupText("Battery")] public double battery_cell10 { get; set; }
+        [GroupText("Battery")] public double battery_cell11 { get; set; }
+        [GroupText("Battery")] public double battery_cell12 { get; set; }
+        [GroupText("Battery")] public double battery_cell13 { get; set; }
+        [GroupText("Battery")] public double battery_cell14 { get; set; }
 
         [GroupText("Battery")] public double battery_temp { get; set; }
+        [GroupText("Battery")] public double battery_temp2 { get; set; }
+        [GroupText("Battery")] public double battery_temp3 { get; set; }
+        [GroupText("Battery")] public double battery_temp4 { get; set; }
+        [GroupText("Battery")] public double battery_temp5 { get; set; }
+        [GroupText("Battery")] public double battery_temp6 { get; set; }
+        [GroupText("Battery")] public double battery_temp7 { get; set; }
+        [GroupText("Battery")] public double battery_temp8 { get; set; }
+        [GroupText("Battery")] public double battery_temp9 { get; set; }
+
+        [GroupText("Battery")] public double battery_remainmin { get; set; }
+        [GroupText("Battery")] public double battery_remainmin2 { get; set; }
+        [GroupText("Battery")] public double battery_remainmin3 { get; set; }
+        [GroupText("Battery")] public double battery_remainmin4 { get; set; }
+        [GroupText("Battery")] public double battery_remainmin5 { get; set; }
+        [GroupText("Battery")] public double battery_remainmin6 { get; set; }
+        [GroupText("Battery")] public double battery_remainmin7 { get; set; }
+        [GroupText("Battery")] public double battery_remainmin8 { get; set; }
+        [GroupText("Battery")] public double battery_remainmin9 { get; set; }
 
         [GroupText("Battery")]
         [DisplayText("Bat used EST (mah)")]
@@ -1150,6 +1223,9 @@ namespace MissionPlanner
         [DisplayText("Bat used EST (mah)")]
         public double battery_usedmah8 { get; set; }
 
+        [GroupText("Battery")]
+        [DisplayText("Bat used EST (mah)")]
+        public double battery_usedmah9 { get; set; }
 
         [GroupText("Battery")]
         [DisplayText("Bat2 Voltage (V)")]
@@ -1406,8 +1482,8 @@ namespace MissionPlanner
             {
                 var dist = DistToHome / multiplierdist;
 
-                if (dist < 5)
-                    return 0;
+                //if (dist < 5)
+                    //return 0;
 
                 var altdiff = (float)(_altasl - TrackerLocation.Alt);
 
@@ -1435,10 +1511,10 @@ namespace MissionPlanner
                 //bearing = bearing - 180;//absolut return direction
                 //if (bearing < 0) bearing += 360;//normalization
 
-                var dist = DistToHome / multiplierdist;
+                //var dist = DistToHome / multiplierdist;
 
-                if (dist < 5)
-                    return 0;
+                //if (dist < 5)
+                    //return 0;
 
                 return (float)bearing;
             }
@@ -1625,6 +1701,8 @@ namespace MissionPlanner
 
         public bool landed { get; set; }
 
+        [GroupText("Saftey")] public bool safteyactive { get; set; }
+
         [GroupText("Terrain")] public bool terrainactive { get; set; }
 
         [GroupText("Terrain")]
@@ -1702,7 +1780,8 @@ namespace MissionPlanner
         public float vibez { get; set; }
 
         public Version version { get; set; }
-
+        public ulong uid { get; set; }
+        public string uid2 { get; set; }
         public float rpm1 { get; set; }
 
         public float rpm2 { get; set; }
@@ -1754,6 +1833,65 @@ namespace MissionPlanner
         [DisplayText("EFI Fuel Consumed (g)")]
         public float efi_fuelconsumed { get; private set; }
 
+        [GroupText("Transponder Status")]
+        [DisplayText("Transponder 1090ES Tx Enabled")]
+        public bool xpdr_es1090_tx_enabled { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Transponder Mode S Reply Enabled")]
+        public bool xpdr_mode_S_enabled { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Transponder Mode C Reply Enabled")]
+        public bool xpdr_mode_C_enabled { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Transponder Mode A Reply Enabled")]
+        public bool xpdr_mode_A_enabled { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Ident Active")]
+        public bool xpdr_ident_active { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("X-bit Status")]
+        public bool xpdr_x_bit_status { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Interrogated since last")]
+        public bool xpdr_interrogated_since_last { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Airborne")]
+        public bool xpdr_airborne_status { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Transponder Mode A squawk code")]
+        public ushort xpdr_mode_A_squawk_code { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("NIC")]
+        public byte xpdr_nic { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("NACp")]
+        public byte xpdr_nacp { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Board Temperature in C")]
+        public byte xpdr_board_temperature { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Maintainence Required")]
+        public bool xpdr_maint_req { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("ADSB Tx System Failure")]
+        public bool xpdr_adsb_tx_sys_fail { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("GPS Unavailable")]
+        public bool xpdr_gps_unavail { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("GPS No Fix")]
+        public bool xpdr_gps_no_fix { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Ping200X No Status Message Recieved")]
+        public bool xpdr_status_unavail { get; private set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Status Update Pending")]
+        public bool xpdr_status_pending { get; set; }
+        [GroupText("Transponder Status")]
+        [DisplayText("Callsign/Flight ID")]
+        public byte[] xpdr_flight_id { get; set; }
+
+
         public object Clone()
         {
             return MemberwiseClone();
@@ -1796,9 +1934,9 @@ namespace MissionPlanner
 
                             var loc = HomeLocation.gps_offset(lpned.y, lpned.x);
 
-                            //lat = loc.Lat;
-                            //lng = loc.Lng;
-                            //alt = (float)(loc.Alt + lpned.z);
+                            posn = lpned.x;
+                            pose = lpned.y;
+                            posd = lpned.z;
                         }
 
                         break;
@@ -1835,6 +1973,9 @@ namespace MissionPlanner
                                 (MAVLink.FIRMWARE_VERSION_TYPE)(version.flight_sw_version & 0xff);
 
                             this.version = new Version(main, sub, rev, (int)type);
+
+                            this.uid = version.uid;
+                            this.uid2 = version.uid2.ToHexString();
 
                             try
                             {
@@ -2404,6 +2545,8 @@ namespace MissionPlanner
 
                             terrainactive = sensors_health.terrain && sensors_enabled.terrain && sensors_present.terrain;
 
+                            safteyactive = !sensors_enabled.motor_control;
+
                             if (errors_count1 > 0 || errors_count2 > 0)
                             {
                                 messageHigh = "InternalError 0x" + (errors_count1 + (errors_count2 << 16)).ToString("X");
@@ -2528,6 +2671,22 @@ namespace MissionPlanner
                                     else battery_cell5 = 0.0;
                                     if (bats.voltages[5] != ushort.MaxValue) battery_cell6 = bats.voltages[5] / 1000.0;
                                     else battery_cell6 = 0.0;
+                                    if (bats.voltages[6] != ushort.MaxValue) battery_cell7 = bats.voltages[6] / 1000.0;
+                                    else battery_cell7 = 0.0;
+                                    if (bats.voltages[7] != ushort.MaxValue) battery_cell8 = bats.voltages[7] / 1000.0;
+                                    else battery_cell8 = 0.0;
+                                    if (bats.voltages[8] != ushort.MaxValue) battery_cell9 = bats.voltages[8] / 1000.0;
+                                    else battery_cell9 = 0.0;
+                                    if (bats.voltages[9] != ushort.MaxValue) battery_cell10 = bats.voltages[9] / 1000.0;
+                                    else battery_cell10 = 0.0;
+                                    if (bats.voltages_ext[0] != ushort.MaxValue) battery_cell11 = bats.voltages_ext[0] / 1000.0;
+                                    else battery_cell11 = 0.0;
+                                    if (bats.voltages_ext[1] != ushort.MaxValue) battery_cell12 = bats.voltages_ext[1] / 1000.0;
+                                    else battery_cell12 = 0.0;
+                                    if (bats.voltages_ext[2] != ushort.MaxValue) battery_cell13 = bats.voltages_ext[2] / 1000.0;
+                                    else battery_cell13 = 0.0;
+                                    if (bats.voltages_ext[3] != ushort.MaxValue) battery_cell14 = bats.voltages_ext[3] / 1000.0;
+                                    else battery_cell14 = 0.0;
                                 }
 
                                 battery_usedmah = bats.current_consumed;
@@ -2535,12 +2694,16 @@ namespace MissionPlanner
                                 _current = bats.current_battery / 100.0f;
                                 if (bats.temperature != short.MaxValue)
                                     battery_temp = bats.temperature / 100.0;
+                                battery_remainmin = bats.time_remaining / 60.0f;
                             }
                             else if (bats.id == 1)
                             {
                                 battery_usedmah2 = bats.current_consumed;
                                 battery_remaining2 = bats.battery_remaining;
                                 _current2 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp2 = bats.temperature / 100.0;
+                                battery_remainmin2 = bats.time_remaining / 60.0f;
                             }
                             else if (bats.id == 2)
                             {
@@ -2548,6 +2711,9 @@ namespace MissionPlanner
                                 battery_remaining3 = bats.battery_remaining;
                                 battery_voltage3 = bats.voltages.Sum(a => a != ushort.MaxValue ? a / 1000.0 : 0);
                                 current3 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp3 = bats.temperature / 100.0;
+                                battery_remainmin3 = bats.time_remaining / 60.0f;
                             }
                             else if (bats.id == 3)
                             {
@@ -2555,6 +2721,9 @@ namespace MissionPlanner
                                 battery_remaining4 = bats.battery_remaining;
                                 battery_voltage4 = bats.voltages.Sum(a => a != ushort.MaxValue ? a / 1000.0 : 0);
                                 current4 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp4 = bats.temperature / 100.0;
+                                battery_remainmin4 = bats.time_remaining / 60.0f;
                             }
                             else if (bats.id == 4)
                             {
@@ -2562,6 +2731,9 @@ namespace MissionPlanner
                                 battery_remaining5 = bats.battery_remaining;
                                 battery_voltage5 = bats.voltages.Sum(a => a != ushort.MaxValue ? a / 1000.0 : 0);
                                 current5 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp5 = bats.temperature / 100.0;
+                                battery_remainmin5 = bats.time_remaining / 60.0f;
                             }
                             else if (bats.id == 5)
                             {
@@ -2569,6 +2741,9 @@ namespace MissionPlanner
                                 battery_remaining6 = bats.battery_remaining;
                                 battery_voltage6 = bats.voltages.Sum(a => a != ushort.MaxValue ? a / 1000.0 : 0);
                                 current6 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp6 = bats.temperature / 100.0;
+                                battery_remainmin6 = bats.time_remaining / 60.0f;
                             }
                             else if (bats.id == 6)
                             {
@@ -2576,6 +2751,9 @@ namespace MissionPlanner
                                 battery_remaining7 = bats.battery_remaining;
                                 battery_voltage7 = bats.voltages.Sum(a => a != ushort.MaxValue ? a / 1000.0 : 0);
                                 current7 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp7 = bats.temperature / 100.0;
+                                battery_remainmin7 = bats.time_remaining / 60.0f;
                             }
                             else if (bats.id == 7)
                             {
@@ -2583,6 +2761,19 @@ namespace MissionPlanner
                                 battery_remaining8 = bats.battery_remaining;
                                 battery_voltage8 = bats.voltages.Sum(a => a != ushort.MaxValue ? a / 1000.0 : 0);
                                 current8 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp8 = bats.temperature / 100.0;
+                                battery_remainmin8 = bats.time_remaining / 60.0f;
+                            }
+                            else if (bats.id == 8)
+                            {
+                                battery_usedmah9 = bats.current_consumed;
+                                battery_remaining9 = bats.battery_remaining;
+                                battery_voltage9 = bats.voltages.Sum(a => a != ushort.MaxValue ? a / 1000.0 : 0);
+                                current9 = bats.current_battery / 100.0f;
+                                if (bats.temperature != short.MaxValue)
+                                    battery_temp9 = bats.temperature / 100.0;
+                                battery_remainmin9 = bats.time_remaining / 60.0f;
                             }
                         }
 
@@ -2752,6 +2943,23 @@ namespace MissionPlanner
 
                             groundspeed2 = gps.vel * 1.0e-2f;
                             groundcourse2 = gps.cog * 1.0e-2f;
+
+                            if (mavLinkMessage.ismavlink2)
+                            {
+                                gpsh_acc2 = gps.h_acc / 1000.0f;
+                                gpsv_acc2 = gps.v_acc / 1000.0f;
+                                gpsvel_acc2 = gps.vel_acc / 1000.0f;
+                                gpshdg_acc2 = gps.hdg_acc / 1e5f;
+                                gpsyaw2 = gps.yaw / 100.0f;
+                            }
+                            else
+                            {
+                                gpsh_acc2 = -1;
+                                gpsv_acc2 = -1;
+                                gpsvel_acc2 = -1;
+                                gpshdg_acc2 = -1;
+                                gpsyaw2 = -1;
+                            }
                         }
 
                         break;
@@ -3092,6 +3300,17 @@ namespace MissionPlanner
                         }
 
                         break;
+                    case (uint)MAVLink.MAVLINK_MSG_ID.HYGROMETER_SENSOR:
+
+                        {
+                            var hygrometer = mavLinkMessage.ToStructure<MAVLink.mavlink_hygrometer_sensor_t>();
+
+                            hygrotemp = hygrometer.temperature;
+                            hygrohumi = hygrometer.humidity;
+                            hygro_id = hygrometer.id;
+                        }
+
+                        break;
                     case (uint)MAVLink.MAVLINK_MSG_ID.VFR_HUD:
 
                         {
@@ -3216,6 +3435,35 @@ namespace MissionPlanner
 
                         }
                         break;
+                    case (uint) MAVLink.MAVLINK_MSG_ID.UAVIONIX_ADSB_OUT_STATUS:
+                        {
+                            var status = mavLinkMessage.ToStructure<MAVLink.mavlink_uavionix_adsb_out_status_t>();
+
+                            xpdr_es1090_tx_enabled = (status.state & 128) != 0;
+                            xpdr_mode_S_enabled = (status.state & 64) != 0 ;
+                            xpdr_mode_C_enabled = (status.state & 32) != 0;
+                            xpdr_mode_A_enabled = (status.state & 16) != 0;
+                            xpdr_ident_active = (status.state & 8) != 0;
+                            xpdr_x_bit_status = (status.state & 4) != 0;
+                            xpdr_interrogated_since_last = (status.state & 2) != 0;
+                            xpdr_airborne_status = (status.state & 1) != 0;
+
+                            xpdr_mode_A_squawk_code = status.squawk;
+                            xpdr_nic = (byte)(status.NIC_NACp & 0x0F);
+                            xpdr_nacp = (byte)((status.NIC_NACp >> 4) & 0x0F);
+                            xpdr_board_temperature = status.boardTemp;
+
+                            xpdr_maint_req = (status.fault & 128) != 0;
+                            xpdr_adsb_tx_sys_fail = (status.fault & 64) != 0;
+                            xpdr_gps_unavail = (status.fault & 32) != 0;
+                            xpdr_gps_no_fix = (status.fault & 16) != 0;
+                            xpdr_status_unavail = (status.fault & 8) != 0;
+
+                            xpdr_flight_id = status.flight_id;
+
+                            xpdr_status_pending = true;
+                        }
+                        break;
                 }
             }
         }
@@ -3231,6 +3479,16 @@ namespace MissionPlanner
         [GroupText("Fence")]
         [DisplayText("Breach type")]
         public byte fenceb_type { get; set; }
+
+        [GroupText("Position")]
+        [DisplayText("North")]
+        public float posn { get;  set; }
+        [GroupText("Position")]
+        [DisplayText("East")]
+        public float pose { get;  set; }
+        [GroupText("Position")]
+        [DisplayText("Down")]
+        public float posd { get;  set; }
 
         public event EventHandler csCallBack;
 
@@ -3278,6 +3536,59 @@ namespace MissionPlanner
             }
         }
 
+        public static int StringCompareTo(string a, string b)
+        {
+            char[] arr1 = a.ToCharArray();
+            char[] arr2 = b.ToCharArray();
+            int i = 0, j = 0;
+            while (i < arr1.Length && j < arr2.Length)
+            {
+                if (char.IsDigit(arr1[i]) && char.IsDigit(arr2[j]))
+                {
+                    string s1 = "", s2 = "";
+                    while (i < arr1.Length && char.IsDigit(arr1[i]))
+                    {
+                        s1 += arr1[i];
+                        i++;
+                    }
+                    while (j < arr2.Length && char.IsDigit(arr2[j]))
+                    {
+                        s2 += arr2[j];
+                        j++;
+                    }
+                    if (int.Parse(s1) > int.Parse(s2))
+                    {
+                        return 1;
+                    }
+                    if (int.Parse(s1) < int.Parse(s2))
+                    {
+                        return -1;
+                    }
+                }
+                else
+                {
+                    if (char.ToLower(arr1[i]) > char.ToLower(arr2[j]))
+                    {
+                        return 1;
+                    }
+                    if (char.ToLower(arr1[i]) < char.ToLower(arr2[j]))
+                    {
+                        return -1;
+                    }
+                    i++;
+                    j++;
+                }
+            }
+            if (arr1.Length == arr2.Length)
+            {
+                return 0;
+            }
+            else
+            {
+                return arr1.Length > arr2.Length ? 1 : -1;
+            }
+        }
+
         public List<string> GetItemList(bool alpha = false, bool numbersonly = false)
         {
             var ans = new List<string>();
@@ -3299,7 +3610,7 @@ namespace MissionPlanner
             }
 
             if (alpha)
-                ans.Sort();
+                ans.Sort((a, b) => StringCompareTo(a, b));
 
             return ans;
         }

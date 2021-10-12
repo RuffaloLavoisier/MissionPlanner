@@ -180,7 +180,7 @@
     <value>15</value>
   </data>
   <data name="cmb_Baud.Size" type="System.Drawing.Size, System.Drawing">
-    <value>70, 28</value>
+    <value>111, 28</value>
   </data>
   <data name="cmb_Baud.TabIndex" type="System.Int32, mscorlib">
     <value>0</value>
@@ -228,7 +228,7 @@
     <value>True</value>
   </data>
   <data name="linkLabel1.Location" type="System.Drawing.Point, System.Drawing">
-    <value>3, 37</value>
+    <value>3, 32</value>
   </data>
   <data name="linkLabel1.Size" type="System.Drawing.Size, System.Drawing">
     <value>40, 13</value>
@@ -254,14 +254,11 @@
   <data name="&gt;&gt;linkLabel1.ZOrder" xml:space="preserve">
     <value>1</value>
   </data>
-  <data name="cmb_sysid.Font" type="System.Drawing.Font, System.Drawing">
-    <value>Microsoft Sans Serif, 12pt</value>
-  </data>
   <data name="cmb_sysid.Location" type="System.Drawing.Point, System.Drawing">
-    <value>49, 30</value>
+    <value>102, 27</value>
   </data>
   <data name="cmb_sysid.Size" type="System.Drawing.Size, System.Drawing">
-    <value>148, 28</value>
+    <value>136, 21</value>
   </data>
   <data name="cmb_sysid.TabIndex" type="System.Int32, mscorlib">
     <value>4</value>
@@ -282,10 +279,10 @@
     <value>True</value>
   </metadata>
   <data name="$this.MinimumSize" type="System.Drawing.Size, System.Drawing">
-    <value>200, 60</value>
+    <value>200, 47</value>
   </data>
   <data name="$this.Size" type="System.Drawing.Size, System.Drawing">
-    <value>200, 60</value>
+    <value>238, 47</value>
   </data>
   <data name="&gt;&gt;$this.Name" xml:space="preserve">
     <value>ConnectionControl</value>

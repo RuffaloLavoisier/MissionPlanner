@@ -17,6 +17,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Android;
+using Android.Util;
 using Android.Bluetooth;
 using Android.Runtime;
 using AndroidX.Core.App;
@@ -40,9 +41,11 @@ using Xamarin.Forms;
 using Xamarin.GCSViews;
 using Application = Android.App.Application;
 using Exception = System.Exception;
+using File = Java.IO.File;
 using Process = Android.OS.Process;
 using String = System.String;
 using Toolbar = AndroidX.AppCompat.Widget.Toolbar;
+using Uri = Android.Net.Uri;
 using View = Android.Views.View;
 
 [assembly: UsesFeature("android.hardware.usb.host", Required = false)]
@@ -58,11 +61,14 @@ namespace Xamarin.Droid
         global::Android.Content.Intent.ActionBootCompleted , UsbManager.ActionUsbDeviceAttached, UsbManager.ActionUsbDeviceDetached, 
         global::Android.Bluetooth.BluetoothDevice.ActionFound, global::Android.Bluetooth.BluetoothDevice.ActionAclConnected, UsbManager.ActionUsbAccessoryAttached}, 
         Categories = new []{ global::Android.Content.Intent.CategoryLauncher})]
+    [IntentFilter(actions: new[] { global::Android.Content.Intent.ActionView }, Categories = new[] { global::Android.Content.Intent.CategoryBrowsable, global::Android.Content.Intent.ActionDefault, global::Android.Content.Intent.CategoryOpenable }, DataHost = "*", DataPathPattern = ".*\\.tlog", DataMimeType = "*/*", DataSchemes = new[] { "file", "http", "https", "content" })]
+    [IntentFilter(actions: new[] { global::Android.Content.Intent.ActionView }, Categories = new[] { global::Android.Content.Intent.CategoryBrowsable, global::Android.Content.Intent.ActionDefault, global::Android.Content.Intent.CategoryOpenable }, DataHost = "*", DataPathPattern = ".*\\.bin", DataMimeType = "*/*", DataSchemes = new[] { "file", "http", "https", "content" })] 
     [MetaData("android.hardware.usb.action.USB_DEVICE_ATTACHED", Resource = "@xml/device_filter")]
     [Activity(Label = "Mission Planner", ScreenOrientation = ScreenOrientation.SensorLandscape, Icon = "@mipmap/icon", Theme = "@style/MainTheme", 
         MainLauncher = true, HardwareAccelerated = true, DirectBootAware = true, Immersive = true, LaunchMode = LaunchMode.SingleInstance)]
     public class MainActivity : global::Xamarin.Forms.Platform.Android.FormsAppCompatActivity
     {
+        private const int SAF = 12321;
         readonly string TAG = "MP";
         private Socket server;
         public UsbDeviceReceiver UsbBroadcastReceiver;
@@ -89,6 +95,27 @@ namespace Xamarin.Droid
                 {
                     PickImageTaskCompletionSource.SetResult(null);
                 }
+            }
+
+            if (requestCode == SAF)
+            {
+                // content:/com.android.externalstorage.documents/tree/primary%3AMp
+
+                var pref = this.GetSharedPreferences("pref", FileCreationMode.Private);
+
+                Uri docUriTree =
+                    DocumentsContract.BuildDocumentUriUsingTree(data.Data,
+                        DocumentsContract.GetTreeDocumentId(data.Data));
+
+                var query = this.ContentResolver.Query(docUriTree, null, null,
+                    null, null);
+                query.MoveToFirst();
+                var filePath = query.GetString(0); 
+                query.Close();
+
+                pref.Edit().PutString("Directory", filePath).Commit();
+
+                ContinueInit();
             }
         }
 
@@ -117,21 +144,87 @@ namespace Xamarin.Droid
 
             SetSupportActionBar((Toolbar) FindViewById(ToolbarResource));
 
-            this.Window.AddFlags(WindowManagerFlags.Fullscreen | WindowManagerFlags.TurnScreenOn | WindowManagerFlags.HardwareAccelerated);
-            
+            this.Window.AddFlags(WindowManagerFlags.Fullscreen | WindowManagerFlags.TurnScreenOn |
+                                 WindowManagerFlags.HardwareAccelerated);
+
             base.OnCreate(savedInstanceState);
+
+            global::Xamarin.Forms.Forms.Init(this, savedInstanceState);
             Xamarin.Essentials.Platform.Init(this, savedInstanceState);
 
+            var pref = this.GetSharedPreferences("pref", FileCreationMode.Private);
+
+            var pass = false;
+
+            if (pref.Contains("Directory"))
+            {
+                try
+                {
+                    var files = Directory.GetFiles(pref.GetString("Directory", ""), "*.*");
+                    pass = true;
+                }
+                catch
+                {
+                    pass = false;
+                }
+            }
+            else
+            {
+                pass = false;
+            }
+            /*
+            if (!pass)
+            {
+                Intent intent = new Intent(Intent.ActionOpenDocumentTree);
+                intent.AddCategory(Intent.CategoryDefault);
+                intent.AddFlags(ActivityFlags.GrantPersistableUriPermission);
+
+                //intent.PutExtra(DocumentsContract.ExtraInitialUri, Application.Context.getExternalStorageDirectory "MissionPlanner");
+                StartActivityForResult(Intent.CreateChooser(intent, "Select a folder to save config settings"), SAF);
+            }
+            else*/
+            {
+                ContinueInit();
+            }
+        }
+
+        void ContinueInit()
+        {
+
+            var list = Application.Context.GetExternalFilesDirs(null);
+            list.ForEach(a => Log.Info("MP", "External dir option: " + a.AbsolutePath));
+
+            var list2 = Application.Context.GetExternalFilesDirs(Environment.DirectoryDownloads);
+            list2.ForEach(a => Log.Info("MP", "External DirectoryDownloads option: " + a.AbsolutePath));
+
+            var pref = this.GetSharedPreferences("pref", FileCreationMode.Private);
+
+
             Settings.CustomUserDataDirectory = Application.Context.GetExternalFilesDir(null).ToString();
+                //pref.GetString("Directory", Application.Context.GetExternalFilesDir(null).ToString());
             Log.Info("MP", "Settings.CustomUserDataDirectory " + Settings.CustomUserDataDirectory);
 
-            WinForms.BundledPath = Application.Context.ApplicationInfo.NativeLibraryDir;
+            try { 
+                WinForms.Android = true;
+                WinForms.BundledPath = Application.Context.ApplicationInfo.NativeLibraryDir;
+                GStreamer.BundledPath = Application.Context.ApplicationInfo.NativeLibraryDir;
+                GStreamer.Android = true;
+            } catch { }
             Log.Info("MP", "WinForms.BundledPath " + WinForms.BundledPath);
+
+            try
+            {
+                JavaSystem.LoadLibrary("gstreamer_android");
+
+                Org.Freedesktop.Gstreamer.GStreamer.Init(this.ApplicationContext);
+            }
+            catch (Exception ex) { Log.Error("MP", ex.ToString()); }
 
             Test.BlueToothDevice = new BTDevice();
             Test.UsbDevices = new USBDevices();
             Test.Radio = new Radio();
             Test.GPS = new GPS();
+            Test.SystemInfo = new SystemInfo();
 
             androidvideo = new AndroidVideo();
             //disable
@@ -197,19 +290,25 @@ namespace Xamarin.Droid
                 Console.WriteLine("pi.ApplicationInfo.DeviceProtectedDataDir " +
                                   pi?.ApplicationInfo?.DeviceProtectedDataDir);
             } catch {}
-            
-            global::Xamarin.Forms.Forms.Init(this, savedInstanceState);
+
 
             {
                 // clean start, see if it was an intent/usb attach
-                if (savedInstanceState == null)
+                //if (savedInstanceState == null)
                 {
                     DoToastMessage("Init Saved State");
                     proxyIfUsbAttached(this.Intent);
+
+                    Console.WriteLine(this.Intent?.Action);
+                    Console.WriteLine(this.Intent?.Categories);
+                    Console.WriteLine(this.Intent?.Data);
+                    Console.WriteLine(this.Intent?.DataString);
+                    Console.WriteLine(this.Intent?.Type);
                 }
             }
 
             GC.Collect();
+            /*
             Task.Run(() =>
             {
                 var gdaldir = Settings.GetRunningDirectory() + "gdalimages";
@@ -221,7 +320,7 @@ namespace Xamarin.Droid
 
                 GMap.NET.MapProviders.GMapProviders.List.Add(GDAL.GDALProvider.Instance);
             });
-
+            */
 
             DoToastMessage("Launch App");
 
@@ -319,8 +418,15 @@ namespace Xamarin.Droid
                             // On UI thread.
                             RunOnUiThread(() =>
                             {
-                                Toast toast = Toast.MakeText(this, text, toastLength);
-                                toast.Show();
+                                try
+                                {
+                                    Toast toast = Toast.MakeText(this, text, toastLength);
+                                    toast.Show();
+                                }
+                                catch
+                                {
+
+                                }
                             });
                         }
                     }
@@ -496,6 +602,22 @@ namespace Xamarin.Droid
                         location.Result.Altitude.HasValue ? location.Result.Altitude.Value : 0.0);
                 }
             );
+        }
+    }
+
+    public class SystemInfo : ISystemInfo
+    {
+        public string GetSystemTag()
+        {
+            // android version
+            try
+            {
+                return SysProp.GetProp("ro.build.fingerprint");
+            }
+            catch
+            {
+                return "";
+            }
         }
     }
 }
